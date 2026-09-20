@@ -3,8 +3,9 @@
 import { useMemo, useState } from 'react';
 import type { Gap, Meeting } from '@/lib/types';
 import { buildGaps, computeCoverage } from '@/lib/engine';
+import { llmToGaps } from '@/lib/llmAnalysis';
 import { GAP_TYPE_LABEL } from '@/lib/labels';
-import { uidGen } from '@/lib/templates';
+import { getTemplate, uidGen } from '@/lib/templates';
 import { Badge, Btn, Card, SectionTitle, inputCls } from './ui';
 
 interface Props {
@@ -16,9 +17,40 @@ interface Props {
 
 export default function CloseStep({ meeting: m, update, onContinue, onFinish }: Props) {
   const cov = useMemo(() => computeCoverage(m), [m]);
-  const gaps = useMemo(() => buildGaps(m, cov), [m, cov]);
+  // 优先用大模型分析的结构化结果；没有（未配置 / 分析失败）则回退内置规则引擎
+  const gaps = useMemo(() => (m.llmAnalysis ? llmToGaps(m.llmAnalysis) : buildGaps(m, cov)), [m, cov]);
   const [reasonFor, setReasonFor] = useState<string | null>(null);
   const [reason, setReason] = useState('');
+  const [reAnalyzing, setReAnalyzing] = useState(false);
+
+  const reAnalyze = async () => {
+    if (!m.transcript.length) return;
+    setReAnalyzing(true);
+    try {
+      const payload = {
+        title: m.title,
+        meetingType: getTemplate(m.templateId).name,
+        keyGoal: m.objectives.filter((o) => o.kind === 'goal').map((o) => o.text),
+        keyConclusions: m.objectives.filter((o) => o.kind === 'conclusion').map((o) => o.text),
+        keyDecisions: m.objectives.filter((o) => o.kind === 'decision').map((o) => o.text),
+        agenda: m.stages.map((s) => s.name),
+        requiredSpeakers: Array.from(new Set(m.stages.flatMap((s) => s.requiredSpeakers))),
+        requiredActionItems: m.objectives.filter((o) => o.kind === 'action').map((o) => o.text),
+        transcript: m.transcript.map((u) => ({ speaker: u.speaker, text: u.text })),
+      };
+      const r = await fetch('/api/meeting-analysis', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const j = (await r.json()) as { analysis?: Meeting['llmAnalysis']; error?: string };
+      if (j.analysis) update((mm) => ({ ...mm, llmAnalysis: j.analysis ?? null }));
+    } catch {
+      /* 失败保持现状 */
+    } finally {
+      setReAnalyzing(false);
+    }
+  };
 
   const resolved = new Map(m.resolvedGaps.map((r) => [r.gapId, r.how]));
   const open = gaps.filter((g) => !resolved.has(g.id));
@@ -66,7 +98,7 @@ export default function CloseStep({ meeting: m, update, onContinue, onFinish }: 
       <div className={`rounded-xl border p-3.5 ${isBlocker ? 'border-rose-200 bg-rose-50/50' : 'border-amber-200 bg-amber-50/40'}`}>
         <div className="flex flex-wrap items-center gap-1.5">
           <Badge tone={isBlocker ? 'red' : 'amber'}>{isBlocker ? '阻塞会议结束' : '可会后跟进'}</Badge>
-          <Badge tone="slate">{GAP_TYPE_LABEL[g.type]}</Badge>
+          <Badge tone="slate">{(GAP_TYPE_LABEL as Record<string, string>)[g.type] ?? '问题'}</Badge>
         </div>
         <div className="mt-2 text-[13.5px] font-medium text-slate-900">{g.title}</div>
         <div className="mt-1 text-[12.5px] leading-5 text-slate-600">{g.detail}</div>
@@ -108,12 +140,17 @@ export default function CloseStep({ meeting: m, update, onContinue, onFinish }: 
           <div>
             <h3 className="text-[15px] font-semibold text-slate-900">为了达成本次会议目标，还有什么没有讨论、没有确认、没有决定？</h3>
             <p className="mt-1 text-[12.5px] text-slate-500">
-              目标达成度 <b className="text-slate-800">{cov.score}%</b> · 共发现 {gaps.length} 个缺口，其中
+              {m.llmAnalysis ? '来源：大模型会议分析' : '来源：内置规则引擎'} · 目标达成度 <b className="text-slate-800">{cov.score}%</b> · 共发现 {gaps.length} 个缺口，其中
               <b className="text-rose-600"> {blockers.length} 项阻塞会议结束</b>、
               <b className="text-amber-600"> {followups.length} 项可会后跟进</b>
             </p>
           </div>
           <div className="ml-auto flex gap-2">
+            {m.transcript.length > 0 && (
+              <Btn size="sm" variant="ghost" onClick={reAnalyze} disabled={reAnalyzing} title="用大模型重新分析会议缺口">
+                {reAnalyzing ? '分析中…' : '重新大模型分析'}
+              </Btn>
+            )}
             <Btn variant="ghost" onClick={onContinue}>
               ← 返回继续讨论
             </Btn>

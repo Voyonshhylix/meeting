@@ -76,7 +76,7 @@ export default function Home() {
           <div className="rounded-2xl border border-slate-200 bg-white p-5">
             <h2 className="text-[16px] font-semibold text-slate-900">怎么用（评审可直接照做）</h2>
             <ol className="mt-3 space-y-2 text-[13px] leading-6 text-slate-600">
-              <li>1. 打开工具 → 点「⚡ 载入产品上线决策会（示例）」，或直接点上方一键体验按钮。</li>
+              <li>1. 打开工具 → 三种方式录入会议：点「🎙 录音录入」实时录制、点「⬆ 上传录音」传音频（mp3/wav/m4a/webm/mp4）、或点「📋 粘贴转录」粘贴文本；也可直接载入示例会议。</li>
               <li>2. 在「会中记录」页点 <b>▶ 逐条推进演示</b>，看覆盖看板随讨论实时变化。</li>
               <li>3. 点「准备结束会议 · 检查缺口」，查看阻塞项与可会后跟进项。</li>
               <li>4. 对任一缺口选择：转为行动项 / 记录例外原因 / 返回继续讨论。</li>
@@ -84,14 +84,22 @@ export default function Home() {
               <li>6. 想换数据：新建会议 → 选其它模板，或批量粘贴自己的会议记录。</li>
             </ol>
           </div>
-          <div className="rounded-2xl border border-amber-200 bg-amber-50/50 p-5">
-            <h2 className="text-[16px] font-semibold text-amber-900">Mock 标识与已知限制</h2>
-            <ul className="mt-3 space-y-2 text-[13px] leading-6 text-amber-900/85">
-              <li>• <b>会议内容是 Mock</b>：示例会议为人工编写的模拟逐字稿，用于演示判定效果；页面内所有标注「Mock 数据」的按钮均为预置数据。</li>
-              <li>• <b>无真实语音转写</b>：不接会议软件 / 麦克风，讨论内容靠手输、批量粘贴或示例数据。</li>
-              <li>• <b>覆盖判定为规则引擎</b>：基于关键词匹配 + 决策/行动信号词 + 发言人匹配，不是大模型语义理解；措辞差异较大时可能漏判或误判，可在目标项里补充关键词提升准确度。</li>
-              <li>• <b>数据存本地浏览器</b>：刷新不丢，换设备/清缓存会丢失，未做账号与云端同步。</li>
-              <li>• <b>未来可接</b>：真实会议转写 API（飞书/腾讯会议/Whisper）、LLM 语义覆盖判定、日历与任务系统回填行动项。</li>
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-5">
+            <h2 className="text-[16px] font-semibold text-emerald-900">已实现 · Real</h2>
+            <ul className="mt-3 space-y-2 text-[13px] leading-6 text-emerald-900/85">
+              <li>• 浏览器麦克风录音（MediaRecorder）：开始 / 停止后自动上传</li>
+              <li>• 音频文件上传：mp3 / wav / m4a / webm / mp4</li>
+              <li>• 语音转文字：调用你的「会议转写 API」（服务端配置，Key 不暴露在前端）</li>
+              <li>• 大模型会议分析：目标 / 议程 / 发言人覆盖、决策、行动项、阻塞与会后跟进项（服务端 LLM API）</li>
+              <li>• 逐字稿编辑、结束前缺口检查、「准备结束会议」与结构化总结</li>
+            </ul>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+            <h2 className="text-[16px] font-semibold text-slate-700">未接入 · Not integrated</h2>
+            <ul className="mt-3 space-y-2 text-[13px] leading-6 text-slate-500">
+              <li>• Zoom / Google Meet / Teams 原生接入</li>
+              <li>• 实时流式转写（streaming / websocket）</li>
+              <li>• 云端账号与多端同步（数据仅保存在本地浏览器）</li>
             </ul>
           </div>
         </section>

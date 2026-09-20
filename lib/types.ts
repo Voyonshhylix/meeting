@@ -77,6 +77,8 @@ export interface Meeting {
   /** 已被处理的缺口 id */
   resolvedGaps: { gapId: string; how: 'action' | 'exception' | 'continued' }[];
   finishedAt?: string;
+  /** 最近一次由大模型 API 分析得到的结构化结果；为空则走内置规则引擎 */
+  llmAnalysis?: LlmAnalysis | null;
 }
 
 export type ItemStatus = 'decided' | 'discussed' | 'mentioned' | 'missing';
@@ -152,4 +154,34 @@ export interface Summary {
   openIssues: { text: string; reason?: string }[];
   actions: { text: string; owner: string; due: string }[];
   risks: { text: string; reason: string }[];
+}
+
+// ============ 大模型 API 返回的结构化会议分析结果 ============
+export interface LlmIssue {
+  id: string;
+  type: string;
+  title: string;
+  detail?: string;
+  suggestion?: string;
+}
+
+export interface LlmAnalysis {
+  generatedAt: string;
+  /** 目标 / 结论 / 决策的覆盖情况 */
+  goalCoverage: { objectiveId?: string; text: string; status: 'covered' | 'partial' | 'missing'; note?: string }[];
+  /** 议程环节覆盖 */
+  agendaCoverage: { stage: string; covered: boolean; note?: string }[];
+  /** 发言人覆盖（未发言的人要指出） */
+  speakerCoverage: { speaker: string; spoke: boolean; note?: string }[];
+  /** 决策事项：讨论过但没决定 -> decided=false */
+  decisions: { text: string; decided: boolean; note?: string }[];
+  /** 行动项：缺 owner 写 "missing"，缺 deadline 写 "missing" */
+  actionItems: { text: string; owner: string; deadline: string }[];
+  /** 阻塞会议结束的问题 */
+  blockingIssues: LlmIssue[];
+  /** 可会后跟进的问题 */
+  followUpIssues: LlmIssue[];
+  /** 结构化总结正文（不是一大段流水账） */
+  summary: string;
+  source: 'live' | 'mock';
 }
